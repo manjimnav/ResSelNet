@@ -1,0 +1,6 @@
+/data
+/results
+*.pyc
+figures
+.vscode/launch.json
+.ipynb_checkpoints

@@ -1,0 +1,11 @@
+CIF2016o6:
+  seq_len: 6
+  pred_len: 6
+  shift: 6
+  crossval: False
+
+CIF2016o12:
+  seq_len: 12
+  pred_len: 12
+  shift: 12
+  crossval: False
