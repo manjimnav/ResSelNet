@@ -6,6 +6,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Lasso
 import numpy as np
+import tensorflow as tf
 
 
 def get_hyperparameters() -> tuple:
@@ -59,14 +60,14 @@ def head_layers(parameters: dict, n_features_out: int, name: str = '') -> list:
     
     head_layers = []
     if selection == 'TimeSelectionLayer':
-        regularization = parameters['selection']['params']['regularization']
+        regularization = parameters['selection']['params'][f'regularization']
         head_layers.append(TimeSelectionLayer(num_outputs=n_features_out,
-                           regularization=regularization, name=f'{name}'))
+                           regularization=regularization, name=f'selection_{name}'))
 
     elif selection == 'TimeSelectionLayerConstant':
-        regularization = parameters['selection']['params']['regularization']
+        regularization = parameters['selection']['params'][f'regularization']
         head_layers.append(TimeSelectionLayerConstant(num_outputs=n_features_out,
-                           regularization=regularization, name=f'{name}'))
+                           regularization=regularization, name=f'selection_{name}'))
     
     if parameters['model']['name'] == 'dense':
         head_layers.append(layers.Flatten())
@@ -108,14 +109,14 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
     inputs_raw = layers.Input(shape=(seq_len*n_features_in,), name='inputs')
     inputs = layers.Reshape((seq_len, n_features_in), name='inputs_reshaped')(inputs_raw)
     
-    header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_in'))
+    header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'0'))
     
     x = inputs if header is None else header(inputs)
     
     for i in range(n_layers):
 
         if i > 0 and residual:
-            header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_{i}'))
+            header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'{i+1}'))
             formatted_inputs = inputs if header is None else header(inputs)
         
             x = layers.Concatenate()([x, formatted_inputs])
@@ -127,12 +128,12 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
 
         x = layer_base(n_units, activation="relu" if model != 'lstm' else "tanh", name=f"layer{i}", **kargs)(x)
         x = layers.Dropout(dropout)(x)
-    
+
     if residual:
-        header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_out'))
+        header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'{n_layers+1 if n_layers>1 else n_layers}'))
         formatted_inputs = inputs if header is None else header(inputs)
 
-        x = layers.Concatenate()([x, formatted_inputs])
+        x = layers.Concatenate()([x, layers.Flatten()(formatted_inputs)])
 
     outputs = layers.Dense(n_features_out*pred_len, name="output")(x)
     model = keras.Model(inputs=inputs_raw, outputs=outputs, name="tsmodel")

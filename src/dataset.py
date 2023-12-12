@@ -190,7 +190,7 @@ def window_one(data_scaled, parameters, values_idxs: list, label_idxs: list, con
             groups.extend([tsgroup for _ in range(group_windowed.cardinality().numpy())])
 
         data_windowed = data_windowed.flat_map(batch_seq).map(lambda x: collate_pair(x, pred_len, values_idxs, label_idxs))
-        
+
         if convert_to_numpy:
             data_windowed = list(map(lambda x: x.numpy(), next(data_windowed.batch(999999).__iter__())))
 
@@ -233,12 +233,12 @@ def windowing(train_scaled: np.ndarray, valid_scaled: np.ndarray, test_scaled: n
 
 
     if model_type == 'tensorflow':
-        data_train["data"] = data_train["data"].shuffle(buffer_size=len(data_train["groups"]), seed=123).batch(
-            batch_size, drop_remainder=True).cache().prefetch(tf.data.AUTOTUNE)
+        data_train["data"] = data_train["data"].shuffle(buffer_size=len(train_scaled), seed=123).batch(
+            batch_size).cache().prefetch(tf.data.AUTOTUNE)
 
     else:
         data_train["data"] = list(map(lambda x: x.numpy(), next(
-            data_train["data"].shuffle(seed=123).batch(999999).__iter__())))
+            data_train["data"].shuffle(buffer_size=len(train_scaled), seed=123).batch(999999).__iter__())))
 
     
     return data_train, data_valid, data_test
