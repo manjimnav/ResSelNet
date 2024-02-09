@@ -1,0 +1,58 @@
+decisiontree:
+  module: sklearn.tree
+  name: DecisionTreeRegressor
+knn:
+  module: sklearn.neighbors
+  name: KNeighborsRegressor
+elasticnet:
+  module: sklearn.linear_model
+  name: ElasticNet
+gaussianprocess:
+  module: sklearn.gaussian_process
+  name: GaussianProcessRegressor
+gbr:
+  module: sklearn.ensemble
+  name: GradientBoostingRegressor
+lasso:
+  module: sklearn.linear_model
+  name: Lasso
+linear:
+  module: sklearn.linear_model
+  name: LinearRegression
+mlp:
+  module: sklearn.neural_network
+  name: MLPRegressor
+rf:
+  module: sklearn.ensemble
+  name: RandomForestRegressor
+extratrees:
+  module: sklearn.ensemble
+  name: ExtraTreesRegressor
+ridge:
+  module: sklearn.linear_model
+  name: Ridge
+svr:
+  module: sklearn.svm
+  name: SVR
+dummy:
+  module: sktime.forecasting.naive
+  name: NaiveForecaster
+  args:
+    strategy: last
+xgb:
+  module: xgboost
+  name: XGBRegressor
+  args:
+    objective: reg:linear
+catboost:
+  module: catboost
+  name: CatBoostRegressor
+  args:
+    loss_function: MultiRMSE
+    eval_metric: MultiRMSE
+lightgbm:
+  module: lightgbm
+  name: LGBMRegressor
+  args:
+    loss_function: MultiRMSE
+    eval_metric: MultiRMSE
