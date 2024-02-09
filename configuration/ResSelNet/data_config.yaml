@@ -1,16 +1,40 @@
-raif:
+aljarafe0523:
   seq_len:
-    - 2
-    - 8
-  pred_len: 1
-  shift: 1
+    - 24
+    - 72
+  pred_len: 24
+  shift: 24
   crossval: False
 
-
-WikiWebTraffic:
+asomadilla0523:
   seq_len:
-    - 60
-    - 120
-  pred_len: 59
-  shift: 59
+    - 24
+    - 72
+  pred_len: 24
+  shift: 24
   crossval: False
+
+bermejales0523:
+  seq_len:
+    - 24
+    - 72
+  pred_len: 24
+  shift: 24
+  crossval: False
+
+rondadelvalle0523:
+  seq_len:
+    - 24
+    - 72
+  pred_len: 24
+  shift: 24
+  crossval: False
+
+torneo0523:
+  seq_len:
+    - 24
+    - 72
+  pred_len: 24
+  shift: 24
+  crossval: False
+

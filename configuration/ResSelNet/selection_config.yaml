@@ -1,4 +1,11 @@
+NoSelection:
 TimeSelectionLayer:
+  regularization: 
+    - 0.0000001
+    - 0.01
+  residual: False
+
+TimeSelectionLayerResidual:
   regularization: 
     - 0.0000001
     - 0.01
