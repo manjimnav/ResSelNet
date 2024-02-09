@@ -2,13 +2,11 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from functools import partial
 from .layer import TimeSelectionLayer, binary_sigmoid_unit, TimeSelectionLayerConstant
-from sklearn.multioutput import MultiOutputRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Lasso
 import numpy as np
-from sklearn.base import BaseEstimator
-import yaml
-import importlib
-import inspect
-import os
+
 
 def get_hyperparameters() -> tuple:
     """
@@ -61,14 +59,14 @@ def head_layers(parameters: dict, n_features_out: int, name: str = '') -> list:
     
     head_layers = []
     if selection == 'TimeSelectionLayer':
-        regularization = parameters['selection']['params'][f'regularization']
+        regularization = parameters['selection']['params']['regularization']
         head_layers.append(TimeSelectionLayer(num_outputs=n_features_out,
-                           regularization=regularization, name=f'selection_{name}'))
+                           regularization=regularization, name=f'{name}'))
 
     elif selection == 'TimeSelectionLayerConstant':
-        regularization = parameters['selection']['params'][f'regularization']
+        regularization = parameters['selection']['params']['regularization']
         head_layers.append(TimeSelectionLayerConstant(num_outputs=n_features_out,
-                           regularization=regularization, name=f'selection_{name}'))
+                           regularization=regularization, name=f'{name}'))
     
     if parameters['model']['name'] == 'dense':
         head_layers.append(layers.Flatten())
@@ -110,14 +108,14 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
     inputs_raw = layers.Input(shape=(seq_len*n_features_in,), name='inputs')
     inputs = layers.Reshape((seq_len, n_features_in), name='inputs_reshaped')(inputs_raw)
     
-    header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'0'))
+    header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_in'))
     
     x = inputs if header is None else header(inputs)
     
     for i in range(n_layers):
 
         if i > 0 and residual:
-            header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'{i+1}'))
+            header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_{i}'))
             formatted_inputs = inputs if header is None else header(inputs)
         
             x = layers.Concatenate()([x, formatted_inputs])
@@ -129,12 +127,12 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
 
         x = layer_base(n_units, activation="relu" if model != 'lstm' else "tanh", name=f"layer{i}", **kargs)(x)
         x = layers.Dropout(dropout)(x)
-
+    
     if residual:
-        header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'{n_layers+1 if n_layers>1 else n_layers}'))
+        header = keras.Sequential(head_layers(parameters, n_features_out*pred_len, name=f'selection_out'))
         formatted_inputs = inputs if header is None else header(inputs)
 
-        x = layers.Concatenate()([x, layers.Flatten()(formatted_inputs)])
+        x = layers.Concatenate()([x, formatted_inputs])
 
     outputs = layers.Dense(n_features_out*pred_len, name="output")(x)
     model = keras.Model(inputs=inputs_raw, outputs=outputs, name="tsmodel")
@@ -148,36 +146,28 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
     return model
 
 
-def get_sk_model(parameters: dict) -> BaseEstimator:
+def get_sk_model(parameters: dict):
+    """
+    Create a scikit-learn model based on the given parameters.
 
-    directory = os.getcwd()
-    available_models_config = yaml.safe_load(open(f'{directory}/src/skmodels.yaml', 'r')) 
+    Args:
+        parameters (dict): The model parameters.
 
-    try:
-        model_config = available_models_config[parameters['model']['name']]
-        model_name, import_module, model_params = model_config['name'], model_config['module'], model_config.get('args', {})
-        MODEL_CLASS = getattr(importlib.import_module(import_module), model_name)
-    
-    except Exception as e:
-        print(e)
-        raise NotImplementedError("Model not found or installed.")
+    Returns:
+        object: The scikit-learn model.
+    """
 
-    model_inspect = inspect.getfullargspec(MODEL_CLASS)
-    if model_inspect.kwonlydefaults is not None:
-        arguments = list(model_inspect.kwonlydefaults.keys())
-        if 'random_state' in arguments:
-            model_params.update({'random_state':123})
-        if 'n_jobs' in arguments:
-            model_params.update({'n_jobs':-1})
+    model = parameters['model']['name']
 
-    
-    model_params.update({k:v for k,v in parameters['model']['params'].items() if k != "type"})
+    if model == 'decisiontree':
+        model = DecisionTreeRegressor(max_depth=parameters['model']['params']['max_depth'])
+    elif model == 'lasso':
+        model = Lasso(alpha=parameters['model']['params']['regularization'])
+    elif model == 'randomforest':
+        model = RandomForestRegressor(max_depth=parameters['model']['params']['max_depth'], n_estimators=parameters['model']['params']['n_estimators'])
+    else:
+        raise NotImplementedError()
 
-    model = MODEL_CLASS(**model_params)
-    
-    if parameters['model']['name'] in ["svr", "gbr"]:
-        model = MultiOutputRegressor(model, n_jobs=-1)
-    
     return model
 
 
