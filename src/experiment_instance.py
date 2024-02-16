@@ -77,7 +77,7 @@ class ExperimentInstance:
 
         self.selected_idxs = select_features(train_scaled, self.parameters, self.label_idxs)
 
-        data_train, data_valid, data_test = windowing(train_scaled, valid_scaled, test_scaled, self.values_idxs, self.label_idxs, self.selected_idxs, self.parameters)
+        data_train, data_valid, data_test = windowing(train_scaled, valid_scaled, test_scaled, self.values_idxs, self.label_idxs, self.parameters)
         
         #self.data_train = np.concatenate(list(map(lambda x: x.numpy(), next(data_train.batch(9999999999).__iter__())))[0])
         
@@ -161,9 +161,9 @@ class ExperimentInstance:
         model_type = self.parameters['model']['params']['type']
 
         if model_type == 'tensorflow':
-            model, history = self.train_tf(model, data_train, data_valid)
+            model, history = self.train_tf(model, data_train["data"], data_valid["data"])
         else:
-            model, history = self.train_sk(model, data_train)
+            model, history = self.train_sk(model, data_train["data"])
 
         return model, history
     

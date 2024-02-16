@@ -48,15 +48,26 @@ class MetricCalculator():
             else:
                 yield (key, value)
     
-    def inverse_scale(self, *y_vals):
+    def inverse_scale(self, y_vals, groups=None):
 
-        mean = self.scaler.mean_[self.label_idxs]
-        std = self.scaler.scale_[self.label_idxs]
+        if groups is None:
+            mean = self.scaler.mean_[self.label_idxs]
+            std = self.scaler.scale_[self.label_idxs]
 
-        iscaled_values = ()
-        for y in y_vals:
-            y_inverse = y*std + mean
-            iscaled_values + (y_inverse,)
+            iscaled_values = ()
+            for y in y_vals:
+                y_inverse = y*std + mean
+                iscaled_values + (y_inverse,)
+        else:
+            iscaled_values = ()
+            for y_scaled in y_vals:
+                y_inverse = []
+                for group, y_val in zip(groups, y_scaled):
+                    mean = self.scaler.scalers[group].mean_[self.label_idxs]
+                    std = self.scaler.scalers[group].scale_[self.label_idxs]
+                    y_inverse.append(y_val*std + mean)
+
+                iscaled_values + (y_inverse,)
         
         return iscaled_values
 
@@ -80,28 +91,16 @@ class MetricCalculator():
         return metrics
 
     def export_metrics(self, model: Union[tf.keras.Model, BaseEstimator], history: tf.keras.callbacks.History, data_test: np.ndarray, data_valid: np.ndarray, duration: float) -> Tuple[pd.DataFrame, tf.Tensor, tf.Tensor, tf.Tensor]:
-        """
-        Calculate evaluation metrics.
-
-        Args:
-            model: The trained model.
-            history: The training history (optional).
-            data_test (tuple): Test data as a tuple of inputs and outputs.
-            data_valid (tf.data.Dataset): Validation data.
-            duration (float): Duration of training.
-
-        Returns:
-            pd.DataFrame: Metrics DataFrame
-        """
         
-        self.inputs_test = data_test[0]
-        self.inputs_valid = data_valid[0]
+        self.inputs_test = data_test["data"][0]
+        self.inputs_valid = data_valid["data"][0]
 
         predictions = model.predict(self.inputs_test)
         predictions_valid = model.predict(self.inputs_valid)
 
-        true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = data_test[1], data_valid[1], predictions, predictions_valid
-        true, true_valid, predictions, predictions_valid = self.inverse_scale(true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled, std=std, mean=mean)
+        true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = data_test["data"][1], data_valid["data"][1], predictions, predictions_valid
+        true, predictions = self.inverse_scale([true_scaled, predictions_scaled], groups=data_test.get("groups", None))
+        true_valid, predictions_valid = self.inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=data_valid.get("groups", None))
 
         metrics_test = self.calculate_metrics(self, true, predictions)
         metrics_valid = self.calculate_metrics(self, true_valid, predictions_valid, metric_key='_valid')

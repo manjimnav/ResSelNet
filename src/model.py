@@ -1,7 +1,7 @@
 from tensorflow import keras
 from tensorflow.keras import layers
 from functools import partial
-from .layer import TimeSelectionLayer, binary_sigmoid_unit, TimeSelectionLayerConstant
+from .layer import TimeSelectionLayer, binary_sigmoid_unit
 from sklearn.multioutput import MultiOutputRegressor
 import numpy as np
 from sklearn.base import BaseEstimator
@@ -58,17 +58,11 @@ def head_layers(parameters: dict, n_features_out: int, name: str = '') -> list:
         list: List of head layers.
     """
     selection = parameters['selection']['name']
-    select_timesteps = parameters['dataset']['params'].get('select_timesteps', True)
     
     head_layers = []
-    if selection == 'TimeSelectionLayer':
+    if 'TimeSelectionLayer' in selection:
         regularization = parameters['selection']['params']['regularization']
         head_layers.append(TimeSelectionLayer(num_outputs=n_features_out,
-                           regularization=regularization, name=f'{name}'))
-
-    elif selection == 'TimeSelectionLayerConstant':
-        regularization = parameters['selection']['params']['regularization']
-        head_layers.append(TimeSelectionLayerConstant(num_outputs=n_features_out,
                            regularization=regularization, name=f'{name}'))
     
     if parameters['model']['name'] == 'dense':

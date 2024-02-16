@@ -11,7 +11,7 @@ def hard_sigmoid(x: tf.Tensor) -> tf.Tensor:
     Returns:
         tf.Tensor: Output tensor with values in the range [0, 1].
     """
-    return tf.clip_by_value((x + 1.)/2., 0, 1)
+    return tf.keras.activations.hard_sigmoid(x)
 
 def round_through(x: tf.Tensor) -> tf.Tensor:
     '''Element-wise rounding to the closest integer with full gradient propagation.
@@ -68,52 +68,6 @@ class TimeSelectionLayer(tf.keras.layers.Layer):
         return tf.reduce_sum(weight * binary_sigmoid_unit(weights))
 
     def build(self, input_shape: tuple):
-        if len(input_shape)>2:
-            shape = [int(input_shape[-2]), int(input_shape[-1])]
-        else:
-            shape = [int(input_shape[-1])]
-
-        self.mask = self.add_weight("kernel",
-                                      shape=shape,
-                                      initializer=tf.keras.initializers.Constant(value=0.01),
-                                      regularizer=self.custom_regularizer)
-        
-    def get_mask(self):
-        
-        return binary_sigmoid_unit(tf.expand_dims(self.mask, 0))[0]
-        
-    def call(self, inputs: tf.Tensor) -> tf.Tensor:
-
-        return tf.multiply(inputs, self.get_mask())
-
-class TimeSelectionLayerConstant(tf.keras.layers.Layer):
-    """
-    Custom TensorFlow Keras layer for time selection with constant regularization.
-
-    Args:
-        num_outputs (int): Number of output units.
-        regularization (float, optional): Regularization strength. Defaults to 0.001.
-        **kwargs: Additional layer arguments.
-    """
-    def __init__(self, num_outputs: int, regularization: float = 0.001, **kwargs):
-        super(TimeSelectionLayerConstant, self).__init__(**kwargs)
-        self.mask = None
-        self.num_outputs = num_outputs
-        self.regularization = regularization
-    
-    def custom_regularizer(self, weights: tf.Tensor) -> tf.Tensor:
-        """
-        Custom regularization function for the layer.
-
-        Args:
-            weights (tf.Tensor): Layer weights.
-
-        Returns:
-            tf.Tensor: Regularization term.
-        """
-        return tf.reduce_sum(self.regularization * binary_sigmoid_unit(weights))
-
-    def build(self, input_shape: tuple) -> None:
         if len(input_shape)>2:
             shape = [int(input_shape[-2]), int(input_shape[-1])]
         else:
