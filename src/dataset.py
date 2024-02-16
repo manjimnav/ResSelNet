@@ -262,7 +262,7 @@ def windowing(train_scaled: np.ndarray, valid_scaled: np.ndarray, test_scaled: n
 
     else:
         data_train["data"] = list(map(lambda x: x.numpy(), next(
-            data_train["data"].shuffle(seed=123).batch(999999).__iter__())))
+            data_train["data"].shuffle(buffer_size=len(train_scaled), seed=123).batch(999999).__iter__())))
 
     
     return data_train, data_valid, data_test
