@@ -8,7 +8,7 @@ from sklearn.base import TransformerMixin
 
 class MetricCalculator():
 
-    def __init__(self, scaler: TransformerMixin, parameters: dict, label_idxs: np.array, features_names: pd.Index, metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
+    def __init__(self, scaler: TransformerMixin, parameters: dict, label_idxs: np.array, features_names: pd.Index, selected_idxs: list | dict[list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
         
         self.dataset = parameters["dataset"]["name"]
         self.scaler = scaler
@@ -16,6 +16,7 @@ class MetricCalculator():
         self.label_idxs = label_idxs
         self.features_names = features_names
         self.metrics_names = metrics_names
+        self.selected_idxs = selected_idxs
 
         self.predictions_test, self.true_test, self.inputs_test, self.inputs_valid = None, None, None, None
 
@@ -80,7 +81,15 @@ class MetricCalculator():
         for key, value in self.recursive_items(self.parameters):
             metrics[key] = value
         
-        metrics['selected_features'] = [self.features_names[list(self.selected_idxs)].tolist()]
+        if type(self.selected_idxs) == list:
+            metrics['selected_features'] = [self.features_names[self.selected_idxs].tolist()]
+        else:
+
+            selected_features = {}
+            for layer_name, idxs in self.selected_idxs.items():
+                selected_features[layer_name] = self.features_names[idxs].tolist()
+
+            metrics['selected_features'] = str(selected_features)
 
         metrics['duration'] = duration
 

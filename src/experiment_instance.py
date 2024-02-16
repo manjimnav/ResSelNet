@@ -182,7 +182,7 @@ class ExperimentInstance:
         self.model, history = self.train(model, data_train, data_valid)
         duration = time.time() - start
 
-        metric_calculator = MetricCalculator(self.scaler, self.parameters, label_idxs=self.label_idxs, features_names=get_feature_names(self.data))
+        metric_calculator = MetricCalculator(self.scaler, self.parameters, label_idxs=self.label_idxs, features_names=get_feature_names(self.data), selected_idxs = self.selected_idxs)
 
         metrics = metric_calculator.export_metrics(self.model, history, data_test, data_valid, duration)
 

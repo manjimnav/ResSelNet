@@ -211,12 +211,13 @@ def get_selected_idxs(model: keras.Model, features: np.ndarray) -> set:
         set: Set of selected indices.
     """
     
-    selected_idxs = set()
+    selected_idxs = {}
+    features_indexes = np.arange(0, features.flatten().shape[0])
     for layer in model.layers:
         if 'selection' in layer.name:
             mask = binary_sigmoid_unit(layer.get_mask()).numpy()
-            selected_idxs = selected_idxs.union(np.arange(0, features.flatten().shape[0])[
-                mask.flatten().astype(bool)].tolist())
+            selected_idxs[layer.name] = features_indexes[mask.flatten().astype(bool)].tolist()
         elif type(layer) == keras.Sequential:
-            selected_idxs = selected_idxs.union(get_selected_idxs(layer, features))
+            selected_idxs.update(get_selected_idxs(layer, features))
+            
     return selected_idxs
