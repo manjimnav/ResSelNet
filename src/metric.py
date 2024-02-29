@@ -4,17 +4,18 @@ from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error,
 import tensorflow as tf
 from typing import Tuple, Union, Iterable
 from sklearn.base import BaseEstimator
-from sklearn.base import TransformerMixin
+from .dataset import TSDataset
+from .dataset import inverse_scale
 
 class MetricCalculator():
 
-    def __init__(self, scaler: TransformerMixin, parameters: dict, label_idxs: np.array, features_names: pd.Index, selected_idxs: list | dict[list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
+    def __init__(self, dataset: TSDataset, parameters: dict, selected_idxs: list | dict[list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
         
         self.dataset = parameters["dataset"]["name"]
-        self.scaler = scaler
+        self.dataset = dataset
         self.parameters = parameters
-        self.label_idxs = label_idxs
-        self.features_names = features_names
+        self.label_idxs = dataset.label_idxs
+        self.features_names = dataset.feature_names
         self.metrics_names = metrics_names
         self.selected_idxs = selected_idxs
 
@@ -48,29 +49,6 @@ class MetricCalculator():
                 yield from self.recursive_items(value, parent_key=key)
             else:
                 yield (key, value)
-    
-    def inverse_scale(self, y_vals, groups=None):
-
-        if groups is None:
-            mean = self.scaler.mean_[self.label_idxs]
-            std = self.scaler.scale_[self.label_idxs]
-
-            iscaled_values = ()
-            for y in y_vals:
-                y_inverse = y*std + mean
-                iscaled_values + (y_inverse,)
-        else:
-            iscaled_values = ()
-            for y_scaled in y_vals:
-                y_inverse = []
-                for group, y_val in zip(groups, y_scaled):
-                    mean = self.scaler.scalers[group].mean_[self.label_idxs]
-                    std = self.scaler.scalers[group].scale_[self.label_idxs]
-                    y_inverse.append(y_val*std + mean)
-
-                iscaled_values + (y_inverse,)
-        
-        return iscaled_values
 
     def calculate_metrics(self, true, predictions, metric_key=''):
 
@@ -99,20 +77,20 @@ class MetricCalculator():
 
         return metrics
 
-    def export_metrics(self, model: Union[tf.keras.Model, BaseEstimator], history: tf.keras.callbacks.History, data_test: np.ndarray, data_valid: np.ndarray, duration: float) -> Tuple[pd.DataFrame, tf.Tensor, tf.Tensor, tf.Tensor]:
+    def export_metrics(self, model: Union[tf.keras.Model, BaseEstimator], history: tf.keras.callbacks.History, duration: float) -> Tuple[pd.DataFrame, tf.Tensor, tf.Tensor, tf.Tensor]:
         
-        self.inputs_test = data_test["data"][0]
-        self.inputs_valid = data_valid["data"][0]
+        self.inputs_test = self.dataset.data_test["data"][0]
+        self.inputs_valid = self.dataset.data_valid["data"][0]
 
         predictions = model.predict(self.inputs_test)
         predictions_valid = model.predict(self.inputs_valid)
 
-        true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = data_test["data"][1], data_valid["data"][1], predictions, predictions_valid
-        true, predictions = self.inverse_scale([true_scaled, predictions_scaled], groups=data_test.get("groups", None))
-        true_valid, predictions_valid = self.inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=data_valid.get("groups", None))
+        true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = self.dataset.data_test["data"][1], self.dataset.data_valid["data"][1], predictions, predictions_valid
+        true, predictions = inverse_scale([true_scaled, predictions_scaled], groups=self.dataset.data_test.get("groups", None))
+        true_valid, predictions_valid = inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=self.dataset.data_valid.get("groups", None))
 
-        metrics_test = self.calculate_metrics(self, true, predictions)
-        metrics_valid = self.calculate_metrics(self, true_valid, predictions_valid, metric_key='_valid')
+        metrics_test = self.calculate_metrics(true, predictions)
+        metrics_valid = self.calculate_metrics(true_valid, predictions_valid, metric_key='_valid')
 
         metrics = pd.DataFrame({**metrics_test, **metrics_valid}, index=[0])
 
@@ -120,5 +98,6 @@ class MetricCalculator():
 
         self.true_test = true.flatten()
         self.predictions_test = predictions.flatten()
+        self.true_test = true_scaled
         
         return metrics

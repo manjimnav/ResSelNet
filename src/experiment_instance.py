@@ -1,9 +1,6 @@
 import numpy as np
 import pandas as pd
-from .dataset import get_values_and_labels_index, split, scale, windowing, get_feature_names
-from .selection import select_features
 from .model import get_model, get_selected_idxs
-from pathlib import Path
 import tensorflow as tf
 import time
 import hashlib
@@ -12,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Tuple, Union, Optional
 from sklearn.base import BaseEstimator
 from .metric import MetricCalculator
+from .dataset import TSDataset
 
 
 class ExperimentInstance:
@@ -27,10 +25,9 @@ class ExperimentInstance:
         
         self.parameters = parameters
         self.metrics = pd.DataFrame()
-        self.data = None
+        self.dataset = None
         self.scaler = None
         self.model = None
-        self.dataset = self.parameters['dataset']['name']
         self.label_idxs, self.values_idxs = [], []
         self.code = self.dict_hash(parameters)
 
@@ -38,10 +35,6 @@ class ExperimentInstance:
         
         self.selected_idxs = []
         self.raw_results_ = []
-        self.data_train = None
-
-        parent_directory = Path(__file__).resolve().parents[1]
-        self.dataset_path = f'{parent_directory}/data/processed/{self.dataset}/data.csv'
 
     def convert(self, num):
         if isinstance(num, np.int64) or isinstance(num, np.int32): return int(num)  
@@ -60,37 +53,7 @@ class ExperimentInstance:
         dhash.update(encoded)
         return dhash.hexdigest()
 
-    def preprocess_data(self) -> Tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
-        """
-        Preprocess the data for training.
-
-        Returns:
-            Tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]: Training, validation, and test datasets.
-        """
-        self.label_idxs, self.values_idxs = get_values_and_labels_index(self.data)
-        if len(self.values_idxs)<1 and not self.parameters['dataset']['params'].get('select_timesteps', True):
-            raise Exception(f"Cannot select features in dataset {self.parameters['dataset']['name']}")
-            
-        train_df, valid_df, test_df = split(self.data, self.parameters)
-
-        train_scaled, valid_scaled, test_scaled, self.scaler = scale(train_df, valid_df, test_df)
-
-        self.selected_idxs = select_features(train_scaled, self.parameters, self.label_idxs)
-
-        data_train, data_valid, data_test = windowing(train_scaled, valid_scaled, test_scaled, self.values_idxs, self.label_idxs, self.parameters)
-        
-        #self.data_train = np.concatenate(list(map(lambda x: x.numpy(), next(data_train.batch(9999999999).__iter__())))[0])
-        
-        return data_train, data_valid, data_test
-
-    def read_data(self) -> None:
-        """Read data from the dataset path."""
-        self.data = pd.read_csv(self.dataset_path)
-
-        self.parameters["features"] = [get_feature_names(self.data, self.parameters)]
-
-
-    def train_tf(self, model: tf.keras.Model, data_train: tf.data.Dataset, data_valid: tf.data.Dataset) -> Tuple[tf.keras.Model, tf.keras.callbacks.History]:
+    def train_tf(self, model: tf.keras.Model) -> Tuple[tf.keras.Model, tf.keras.callbacks.History]:
         """
         Train a TensorFlow model.
 
@@ -106,19 +69,19 @@ class ExperimentInstance:
         callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
 
         history = model.fit(
-            data_train,
+            self.dataset.data_train["data"],
             epochs=100,
             callbacks=[callback],
-            validation_data=data_valid,
+            validation_data=self.dataset.data_valid["data"],
             verbose = 0
         )
 
         if 'TimeSelectionLayer' in self.parameters['selection']['name']:
-            self.selected_idxs = get_selected_idxs(model, get_feature_names(self.data, self.parameters))
+            self.selected_idxs = get_selected_idxs(model, self.dataset.feature_names)
 
         return model, history
     
-    def train_sk(self, model: BaseEstimator, data_train: np.ndarray) -> Tuple[BaseEstimator, None]:
+    def train_sk(self, model: BaseEstimator) -> Tuple[BaseEstimator, None]:
         """
         Train a scikit-learn model.
 
@@ -130,22 +93,24 @@ class ExperimentInstance:
             Tuple[Any, None]: Trained model and None (no training history).
         """
 
+        data_train = self.dataset.data_train["data"]
+
         model_name = self.parameters['model']['name']
 
         model.fit(data_train[0], data_train[1])
 
-        features = get_feature_names(self.data, self.parameters)
+        features = self.dataset.feature_names
         features_idxs = np.arange(0, features.flatten().shape[0])
 
         if model_name == 'lasso':
             importances = model.coef_.max(axis=0)
         else:
             importances = model.feature_importances_
-        self.selected_idxs = features_idxs[importances>0]
+        self.selected_idxs = {"level0": features_idxs[importances>0]}
 
         return model, None
 
-    def train(self, model: Union[tf.keras.Model, BaseEstimator], data_train, data_valid) -> Tuple[Union[tf.keras.Model, BaseEstimator], Optional[tf.keras.callbacks.History]]:
+    def train(self, model: Union[tf.keras.Model, BaseEstimator]) -> Tuple[Union[tf.keras.Model, BaseEstimator], Optional[tf.keras.callbacks.History]]:
         """
         Train a model.
 
@@ -161,9 +126,9 @@ class ExperimentInstance:
         model_type = self.parameters['model']['params']['type']
 
         if model_type == 'tensorflow':
-            model, history = self.train_tf(model, data_train["data"], data_valid["data"])
+            model, history = self.train_tf(model)
         else:
-            model, history = self.train_sk(model, data_train["data"])
+            model, history = self.train_sk(model)
 
         return model, history
     
@@ -174,27 +139,31 @@ class ExperimentInstance:
         Returns:
             Tuple[pd.DataFrame, tf.Tensor, tf.Tensor, tf.Tensor]: Metrics DataFrame, test data inputs, true values, and predictions.
         """
-        data_train, data_valid, data_test = self.preprocess_data()
 
-        model = get_model(self.parameters, self.label_idxs, self.values_idxs)
+        self.dataset.preprocess()
+
+        n_features_in = len(self.dataset.label_idxs) + len(self.dataset.values_idxs)
+        n_features_out = len(self.dataset.label_idxs)
+
+        model = get_model(self.parameters, n_features_in, n_features_out)
 
         start = time.time()
-        self.model, history = self.train(model, data_train, data_valid)
+        self.model, history = self.train(model)
         duration = time.time() - start
 
-        metric_calculator = MetricCalculator(self.scaler, self.parameters, label_idxs=self.label_idxs, features_names=get_feature_names(self.data), selected_idxs = self.selected_idxs)
+        metric_calculator = MetricCalculator(self.dataset, self.parameters, selected_idxs = self.selected_idxs)
 
-        metrics = metric_calculator.export_metrics(self.model, history, data_test, data_valid, duration)
+        metrics = metric_calculator.export_metrics(self.model, history, duration)
 
-        return metrics
+        return metric_calculator, metrics
     
-    def store_raw_results(self, inputs, true, predictions, test_year=None):
+    def store_raw_results(self, metric_calculator, test_year=None):
         if "year" in self.data.columns:
             dates = pd.date_range(datetime(self.data["year"].max(), 1, 1) + timedelta(hours=self.parameters['dataset']['params']['seq_len']), datetime(test_year, 12, 31), freq='H')
-            dates = dates[:len(true)]
-            self.raw_results_.append((dates, inputs, true, predictions))
+            dates = dates[:len(metric_calculator.true_test)]
+            self.raw_results_.append((dates, metric_calculator.input_test, metric_calculator.true_test, metric_calculator.prediction_test))
         else:
-            self.raw_results_.append((inputs, true, predictions))
+            self.raw_results_.append((metric_calculator.input_test, metric_calculator.true_test, metric_calculator.prediction_test))
     
     def run(self) -> pd.DataFrame:
         """
@@ -204,33 +173,32 @@ class ExperimentInstance:
             pd.DataFrame: Metrics DataFrame.
         """
         
-        self.read_data()
+        self.dataset = TSDataset(self.parameters)
 
         split_by_year = self.parameters['dataset']['params'].get('crossval', False)
 
         self.metrics = pd.DataFrame()
         if split_by_year:
 
-            years = sorted(self.data.year.unique())
+            years = sorted(self.dataset.data.year.unique())
 
             years = years[5:] # At least 6 years: 1 Test, 1 Val, 4 Train
-            data_complete = self.data.copy()
-            for test_year in sorted(self.data.year.unique()): # yearly crossval
+            for test_year in years: # yearly crossval
                 self.parameters['dataset']['params']['test_year'] = test_year
 
-                self.data = data_complete[data_complete.year<=test_year] # Implements scalated data
+                self.dataset.crop(start_year=test_year-5, end_year=test_year)
 
-                year_metrics, inputs, true, predictions = self.execute_one()
+                metric_calculator, year_metrics = self.execute_one()
 
                 self.metrics = pd.concat([self.metrics, year_metrics])
 
-                self.store_raw_results(self, inputs, true, predictions, test_year=test_year)
+                self.store_raw_results(self, metric_calculator, test_year=test_year)
         else:
-            if "year" in self.data.columns:
-                self.parameters['dataset']['params']['test_year'] = self.data["year"].max()
+            if "year" in self.dataset.data.columns:
+                self.parameters['dataset']['params']['test_year'] = self.dataset.data["year"].max()
                 
-            self.metrics, inputs, true, predictions = self.execute_one() 
+            metric_calculator, self.metrics = self.execute_one() 
 
-            self.store_raw_results(self, inputs, true, predictions, test_year=self.parameters['dataset']['params'].get('test_year', None))
+            self.store_raw_results(self, metric_calculator, test_year=self.parameters['dataset']['params'].get('test_year', None))
 
         return self.metrics

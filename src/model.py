@@ -73,7 +73,7 @@ def head_layers(parameters: dict, n_features_out: int, name: str = '') -> list:
     else:
         return None
 
-def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras.Model:
+def get_tf_model(parameters: dict, n_features_in, n_features_out) -> keras.Model:
     """
     Create a TensorFlow model based on the given parameters.
 
@@ -96,9 +96,6 @@ def get_tf_model(parameters: dict, label_idxs: list, values_idxs: list) -> keras
     residual = residual.get('residual', False)
     
     loss, metrics = get_hyperparameters()
-
-    n_features_in = len(label_idxs) + len(values_idxs)
-    n_features_out = len(label_idxs)
         
     layer_base = get_base_layer(model)
     
@@ -176,7 +173,7 @@ def get_sk_model(parameters: dict) -> BaseEstimator:
     return model
 
 
-def get_model(parameters: dict, label_idxs: list, values_idxs: list):
+def get_model(parameters: dict, n_features_in, n_features_out):
     """
     Create a model based on the given parameters.
 
@@ -192,7 +189,7 @@ def get_model(parameters: dict, label_idxs: list, values_idxs: list):
     model_type = parameters['model']['params']['type']
 
     if model_type == 'tensorflow':
-        model = get_tf_model(parameters, label_idxs, values_idxs)
+        model = get_tf_model(parameters, n_features_in, n_features_out)
     else:
         model = get_sk_model(parameters)
 
