@@ -2,10 +2,10 @@
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from typing import Union
+from typing import Union, Type
 
 class GroupByScaler(BaseEstimator, TransformerMixin):
-    def __init__(self, BASE_SCALER: type[TransformerMixin] =StandardScaler):
+    def __init__(self, BASE_SCALER: Type[TransformerMixin] =StandardScaler):
         self.scalers = dict()
         self.BASE_SCALER = BASE_SCALER
     
@@ -51,13 +51,13 @@ def scale(train_df: Union[np.ndarray, tuple], valid_df: Union[np.ndarray, tuple]
 
     return train_scaled, valid_scaled, test_scaled, scaler
 
-def inverse_scale(self, y_vals, groups=None):
+def inverse_scale(y_vals, groups=None, scaler=None, label_idxs=None):
 
         iscaled_values = ()
 
         if groups is None:
-            mean = self.scaler.mean_[self.label_idxs]
-            std = self.scaler.scale_[self.label_idxs]
+            mean = scaler.mean_[label_idxs]
+            std = scaler.scale_[label_idxs]
 
             for y in y_vals:
                 y_inverse = y*std + mean
@@ -66,8 +66,8 @@ def inverse_scale(self, y_vals, groups=None):
             for y_scaled in y_vals:
                 y_inverse = []
                 for group, y_val in zip(groups, y_scaled):
-                    mean = self.scaler.scalers[group].mean_[self.label_idxs]
-                    std = self.scaler.scalers[group].scale_[self.label_idxs]
+                    mean = scaler.scalers[group].mean_[label_idxs]
+                    std = scaler.scalers[group].scale_[label_idxs]
                     y_inverse.append(y_val*std + mean)
 
                 iscaled_values = iscaled_values + (y_inverse,)

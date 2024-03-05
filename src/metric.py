@@ -6,10 +6,11 @@ from typing import Tuple, Union, Iterable
 from sklearn.base import BaseEstimator
 from .dataset import TSDataset
 from .dataset import inverse_scale
+from typing import Dict, Union
 
 class MetricCalculator():
 
-    def __init__(self, dataset: TSDataset, parameters: dict, selected_idxs: list | dict[list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
+    def __init__(self, dataset: TSDataset, parameters: dict, selected_idxs:  Dict[str, list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
         
         self.dataset = parameters["dataset"]["name"]
         self.dataset = dataset
@@ -86,8 +87,8 @@ class MetricCalculator():
         predictions_valid = model.predict(self.inputs_valid)
 
         true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = self.dataset.data_test["data"][1], self.dataset.data_valid["data"][1], predictions, predictions_valid
-        true, predictions = inverse_scale([true_scaled, predictions_scaled], groups=self.dataset.data_test.get("groups", None))
-        true_valid, predictions_valid = inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=self.dataset.data_valid.get("groups", None))
+        true, predictions = inverse_scale([true_scaled, predictions_scaled], groups=self.dataset.data_test.get("groups", None), scaler=self.dataset.scaler, label_idxs=self.dataset.label_idxs)
+        true_valid, predictions_valid = inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=self.dataset.data_valid.get("groups", None), scaler=self.dataset.scaler, label_idxs=self.dataset.label_idxs)
 
         metrics_test = self.calculate_metrics(true, predictions)
         metrics_valid = self.calculate_metrics(true_valid, predictions_valid, metric_key='_valid')

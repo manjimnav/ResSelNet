@@ -10,6 +10,8 @@ from typing import Tuple, Union, Optional
 from sklearn.base import BaseEstimator
 from .metric import MetricCalculator
 from .dataset import TSDataset
+import copy
+
 
 
 class ExperimentInstance:
@@ -145,7 +147,7 @@ class ExperimentInstance:
         n_features_in = len(self.dataset.label_idxs) + len(self.dataset.values_idxs)
         n_features_out = len(self.dataset.label_idxs)
 
-        model = get_model(self.parameters, n_features_in, n_features_out)
+        model = get_model(copy.deepcopy(self.parameters), n_features_in, n_features_out) # Important the deepcopy to avoid tf redefinition of parameters 
 
         start = time.time()
         self.model, history = self.train(model)
@@ -158,12 +160,12 @@ class ExperimentInstance:
         return metric_calculator, metrics
     
     def store_raw_results(self, metric_calculator, test_year=None):
-        if "year" in self.data.columns:
-            dates = pd.date_range(datetime(self.data["year"].max(), 1, 1) + timedelta(hours=self.parameters['dataset']['params']['seq_len']), datetime(test_year, 12, 31), freq='H')
+        if "year" in self.dataset.data.columns:
+            dates = pd.date_range(datetime(self.dataset.data["year"].max(), 1, 1) + timedelta(hours=self.parameters['dataset']['params']['seq_len']), datetime(test_year, 12, 31), freq='H')
             dates = dates[:len(metric_calculator.true_test)]
-            self.raw_results_.append((dates, metric_calculator.input_test, metric_calculator.true_test, metric_calculator.prediction_test))
+            self.raw_results_.append((dates, metric_calculator.inputs_test, metric_calculator.true_test, metric_calculator.predictions_test))
         else:
-            self.raw_results_.append((metric_calculator.input_test, metric_calculator.true_test, metric_calculator.prediction_test))
+            self.raw_results_.append((metric_calculator.inputs_test, metric_calculator.true_test, metric_calculator.predictions_test))
     
     def run(self) -> pd.DataFrame:
         """
@@ -192,13 +194,13 @@ class ExperimentInstance:
 
                 self.metrics = pd.concat([self.metrics, year_metrics])
 
-                self.store_raw_results(self, metric_calculator, test_year=test_year)
+                self.store_raw_results(metric_calculator, test_year=test_year)
         else:
             if "year" in self.dataset.data.columns:
                 self.parameters['dataset']['params']['test_year'] = self.dataset.data["year"].max()
                 
             metric_calculator, self.metrics = self.execute_one() 
 
-            self.store_raw_results(self, metric_calculator, test_year=self.parameters['dataset']['params'].get('test_year', None))
+            self.store_raw_results(metric_calculator, test_year=self.parameters['dataset']['params'].get('test_year', None))
 
         return self.metrics
