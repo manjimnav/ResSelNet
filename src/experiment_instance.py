@@ -184,11 +184,11 @@ class ExperimentInstance:
 
             years = sorted(self.dataset.data.year.unique())
 
-            years = years[5:] # At least 6 years: 1 Test, 1 Val, 4 Train
+            years = years[7:] # At least 7 years: 1 Test, 1 Val, 5 Train
             for test_year in years: # yearly crossval
                 self.parameters['dataset']['params']['test_year'] = test_year
 
-                self.dataset.crop(start_year=test_year-5, end_year=test_year)
+                self.dataset.crop(start_year=test_year-6, end_year=test_year)
 
                 metric_calculator, year_metrics = self.execute_one()
 
