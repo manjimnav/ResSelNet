@@ -50,7 +50,6 @@ class ExperimentInstance:
         dhash = hashlib.md5()
         # We need to sort arguments so {'a': 1, 'b': 2} is
         # the same as {'b': 2, 'a': 1}
-        print(dictionary)
         encoded = json.dumps(dictionary, sort_keys=True, default=self.convert).encode()
         dhash.update(encoded)
         return dhash.hexdigest()

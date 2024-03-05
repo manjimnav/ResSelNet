@@ -202,14 +202,17 @@ class ExperimentLauncher:
             model_params = {"model": {"name": model, "params": self.model_configuration[model]}}
 
             general_params = {**dataset_params, **selection_params, **model_params}
+            self.seed()   
 
-            for params in tqdm(self.search_hyperparameters(general_params), leave=False, total=self.iterations):
+            params_generator = tqdm(self.search_hyperparameters(general_params), leave=False, total=self.iterations)
+            for params in params_generator:
 
                 if (params['model']['params']['type'] == "sklearn" and params['selection']['name'] != 'NoSelection'):
                     continue   
-                
-                self.seed()                
+
                 experiment = ExperimentInstance(params)
+
+                params_generator.set_description(str(experiment.parameters))
                 
                 if self.is_performed(experiment, params):
                     continue

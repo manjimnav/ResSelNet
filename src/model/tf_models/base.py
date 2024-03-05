@@ -21,9 +21,12 @@ class BaseModel(tf.keras.Model):
 
         if self.model == 'dense':
             self.hidden_layers = [self.BASE_LAYER(self.n_units, name=f'layer_{i}') for i in range(self.n_layers)]
+            self.reshape_layer = layers.Reshape((self.seq_len*n_features_in), name='inputs_reshaped') # We expect the input size to be seq_len*feat_dim. So we transform it to (seq_len, feat_dim)
+
         else:
 
             self.hidden_layers = [self.BASE_LAYER(self.n_units, name=f'layer_{i}', return_sequences=True if i<(self.n_layers-1) else False) for i in range(self.n_layers)]
+            self.reshape_layer = layers.Reshape((self.seq_len, n_features_in), name='inputs_reshaped') # We expect the input size to be seq_len*feat_dim. So we transform it to (seq_len, feat_dim)
         
         self.dropout_hidden_layers = [layers.Dropout(self.dropout) for _ in range(self.n_layers)]
 
@@ -32,8 +35,7 @@ class BaseModel(tf.keras.Model):
 
     def call(self, inputs):
 
-        if self.model != 'dense':
-            inputs = self.reshape_layer(inputs)
+        inputs = self.reshape_layer(inputs)
 
         x = inputs
         for hidden_l, dropout_l in zip(self.hidden_layers, self.dropout_hidden_layers):

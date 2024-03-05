@@ -3,6 +3,7 @@ import math
 from functools import partial
 from typing import Type
 import numpy as np
+from tensorflow.keras import initializers
 
 def hard_sigmoid(x: tf.Tensor) -> tf.Tensor:
     """
@@ -125,11 +126,11 @@ def get_base_layer(layer_type: str) -> Type[tf.keras.layers.Layer]:
         callable: The base layer function.
     """
     if layer_type == 'dense':
-        BASE_LAYER = partial(tf.keras.layers.Dense, activation='relu')
+        BASE_LAYER = partial(tf.keras.layers.Dense, activation='relu', kernel_initializer=initializers.GlorotUniform(seed=123), bias_initializer=initializers.Zeros())
     elif layer_type == 'lstm':
-        BASE_LAYER = partial(tf.keras.layers.LSTM, activation='tanh')
+        BASE_LAYER = partial(tf.keras.layers.LSTM, activation='tanh', kernel_initializer=initializers.HeUniform(seed=123), bias_initializer=initializers.Zeros())
     elif layer_type == 'cnn':
-        BASE_LAYER = partial(tf.keras.layers.Conv1D, kernel_size=3)
+        BASE_LAYER = partial(tf.keras.layers.Conv1D, kernel_size=3, kernel_initializer=initializers.HeUniform(seed=123), bias_initializer=initializers.Zeros())
 
     return BASE_LAYER
 
