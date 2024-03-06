@@ -102,7 +102,7 @@ def windowing(train_scaled: np.ndarray, valid_scaled: np.ndarray, test_scaled: n
         tuple: Training, validation, and test datasets in the specified format.
     """
     model_type = parameters['model']['params']['type']
-    batch_size = parameters['model']['params']['batch_size']
+    batch_size = parameters['model']['params'].get('batch_size', 32)
 
     data_train = window_one(train_scaled, parameters, values_idxs, label_idxs, convert_to_numpy=False)
     data_valid = window_one(valid_scaled, parameters, values_idxs, label_idxs)
