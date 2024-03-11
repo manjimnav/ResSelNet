@@ -4,12 +4,12 @@ from .base import BaseModel
 
 
 class ResSelNet(BaseModel):
-    def __init__(self, parameters, n_features_out=1):
-        super().__init__(parameters, n_features_out)
+    def __init__(self, parameters, n_features_in=7, n_features_out=1):
+        super().__init__(parameters, n_features_in, n_features_out)
 
         self.input_time_selection_layer = get_time_selection_layer(self.parameters, self.n_outputs, name=f'input_tsl')
 
-        self.residual_hidden_layers = [get_time_selection_layer(self.parameters, self.n_outputs, name=f'tsl_{i}') for i in range(self.n_layers)]
+        self.residual_hidden_layers = [get_time_selection_layer(self.parameters, self.n_outputs, name=f'tsl_{i}', flatten=parameters['model']['name'] == 'dense' or i==(self.n_layers-1)) for i in range(self.n_layers)]
 
     def call(self, inputs):
 

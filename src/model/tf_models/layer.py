@@ -97,7 +97,7 @@ class TimeSelectionLayer(tf.keras.layers.Layer):
         return inputs_masked
     
 
-def get_time_selection_layer(parameters: dict, n_features_out: int, name: str = '') -> list:
+def get_time_selection_layer(parameters: dict, n_features_out: int, flatten=False, name: str = '') -> list:
     """
     Instantiate the selection layer based on the selection type in the parameters.
 
@@ -111,7 +111,7 @@ def get_time_selection_layer(parameters: dict, n_features_out: int, name: str = 
     """
     
     regularization = parameters['selection']['params']['regularization']
-    tsl = TimeSelectionLayer(num_outputs=n_features_out, regularization=regularization, flatten=parameters['model']['name'] == 'dense',  name=f'{name}')
+    tsl = TimeSelectionLayer(num_outputs=n_features_out, regularization=regularization, flatten=flatten,  name=f'{name}')
 
     return tsl
 

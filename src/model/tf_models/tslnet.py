@@ -2,8 +2,8 @@ from .layer import get_time_selection_layer
 from .base import BaseModel
 
 class TSLNet(BaseModel):
-    def __init__(self, parameters):
-        super().__init__(parameters)
+    def __init__(self, parameters, n_features_in=7, n_features_out=1):
+        super().__init__(parameters, n_features_in, n_features_out)
         self.input_time_selection_layer = get_time_selection_layer(self.parameters, self.n_outputs, name=f'input_tsl')
         
 
