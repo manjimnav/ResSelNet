@@ -13,6 +13,8 @@ In order to run the experimentation several dependencies must be installed. The 
 pip install -r requirements.txt
 ```
 
+The data should be uncompressed in a folder called "data" on the root directory of the project. The zip can be found at: [PollutionDataset](https://uses0-my.sharepoint.com/:u:/g/personal/mjimenez3_us_es/EVhnCJj0NHlNgFAqe5ncZTgBybUzicDoIS871Pc7IMHU4Q?e=xEWgab)
+
 ## Reproduce result
 
 #### Reproduce full experimentation
