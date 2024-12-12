@@ -1,0 +1,191 @@
+# attn:
+#   layers:
+#     - 1
+#     - 2
+#     - 3
+#   units:
+#     - 4
+#     - 8
+#     - 16
+#     - 32
+#     - 64
+#   dropout:
+#     - 0.0
+#     - 0.1
+#     - 0.2
+#   batch_size:
+#     - 32
+#   lr:
+#     - 0.003
+#   type: pytorch
+
+# cnn:
+#   layers:
+#     - 1
+#     - 2
+#     - 3
+#   units:
+#     - 4
+#     - 8
+#     - 16
+#     - 32
+#     - 64
+#   dropout:
+#     - 0.0
+#     - 0.1
+#     - 0.2
+#   batch_size:
+#     - 32
+#   lr:
+#     - 0.003
+#   type: pytorch
+
+# lstm:
+#   keep_dims: False
+#   layers:
+#     - 1
+#     - 2
+#     - 3
+#   units:
+#     - 4
+#     - 8
+#     - 16
+#     - 32
+#     - 64
+#   dropout:
+#     - 0.0
+#     - 0.1
+#     - 0.2
+#   batch_size:
+#     - 32
+#   lr:
+#     - 0.003
+#   type: pytorch
+
+# itransformer:
+#   layers:
+#     - 1
+#     - 2
+#     - 3
+#   units:
+#     - 4
+#     - 8
+#     - 16
+#     - 32
+#     - 64
+#   dropout:
+#     - 0.0
+#     - 0.1
+#     - 0.2
+#   output_attention: false
+#   n_heads:
+#     - 2
+#   use_norm: true
+#   batch_size:
+#     - 32
+#   lr:
+#     - 0.003
+#   type: pytorch
+
+
+dacnetitransformer:
+  layers:
+    - 1
+    - 5
+  units:
+    - 4
+    - 128
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 32
+    - 128
+  lr:
+    - 0.000001
+    - 0.01
+  binarize_scores: true
+  body_block:
+    - lstm
+    - cnn
+  head_block: itransformer
+  scorer:
+    - linear
+    - attn
+  detach_parent: false
+  type: pytorch
+
+dacnet:
+  layers:
+    - 1
+    - 5
+  units:
+    - 4
+    - 128
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 32
+    - 128
+  lr:
+    - 0.000001
+    - 0.01
+  binarize_scores: 
+    - true
+    - false
+  body_block:
+    - fc
+    - lstm
+    - cnn
+  scorer:
+    - linear
+    - attn
+  detach_parent: false
+  type: pytorch
+
+dacnetattn:
+  layers:
+    - 1
+    - 5
+  units:
+    - 4
+    - 512
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 32
+    - 128
+  lr:
+    - 0.000001
+    - 0.01
+  binarize_scores: true
+  body_block:
+    - lstm
+    - cnn
+  head_block: attn
+  scorer:
+    - linear
+    - attn
+  detach_parent: false
+  type: pytorch
+
+
+dense:
+  layers:
+    - 1
+    - 5
+  units:
+    - 4
+    - 512
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 32
+    - 128
+  lr:
+    - 0.000001
+    - 0.01
+  type: pytorch

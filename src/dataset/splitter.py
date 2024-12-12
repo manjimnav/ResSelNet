@@ -44,7 +44,7 @@ def split(data: np.ndarray, parameters: dict) -> tuple:
         tuple: Training, validation, and test datasets.
     """
 
-    input_columns = [col for col in data.columns.tolist() if col != 'year']
+    input_columns = [col for col in data.columns.tolist() if col not in ['year', 'tsgroup', 'time_idx']]
 
     test_year = parameters['dataset']['params'].get('test_year', None)
     seq_len = parameters['dataset']['params']['seq_len']
@@ -65,9 +65,9 @@ def split(data: np.ndarray, parameters: dict) -> tuple:
 
                 train_df_group, valid_df_group, test_df_group = split_by_index(group_df, input_columns, train_val_index=(train_end_index, val_end_index))
 
-            train_df += ((tsgroup, train_df_group.values),)
-            valid_df += ((tsgroup, valid_df_group.values),)
-            test_df += ((tsgroup, test_df_group.values),)
+            train_df += ((tsgroup, train_df_group),)
+            valid_df += ((tsgroup, valid_df_group),)
+            test_df += ((tsgroup, test_df_group),)
 
     if test_year != None:
         train_df, valid_df, test_df = split_by_year(data, input_columns, test_year)
