@@ -5,3 +5,7 @@ figures
 .vscode/launch.json
 .ipynb_checkpoints
 lightning_logs/
+*.tex
+*.ckpt
+*.pth
+*.sh
