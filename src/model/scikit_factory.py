@@ -33,7 +33,7 @@ def get_sk_model(parameters: dict) -> BaseEstimator:
 
     model = MODEL_CLASS(**model_params)
     
-    if parameters['model']['name'] in ["svr", "gbr", "lightgbm"]:
+    if parameters['model']['name'] in ["svr", "gbr"]:
         model = MultiOutputRegressor(model, n_jobs=-1)
     
     return model
