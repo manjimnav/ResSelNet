@@ -4,3 +4,7 @@
 figures
 .vscode/launch.json
 .ipynb_checkpoints
+reproducedemand.ipynb
+tab.tex
+tables/efficacy_by_year.tex
+tables/efficacy.tex
