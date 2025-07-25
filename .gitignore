@@ -8,3 +8,8 @@ reproducedemand.ipynb
 tab.tex
 tables/efficacy_by_year.tex
 tables/efficacy.tex
+lightning_logs/
+*.tex
+*.ckpt
+*.pth
+*.sh

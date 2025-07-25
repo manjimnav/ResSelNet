@@ -1,0 +1,33 @@
+CIF2016o6:
+  seq_len:
+    - 3
+    - 12
+  pred_len: 1
+  shift: 1
+  crossval: False
+
+CIF2016o12:
+  seq_len:
+    - 3
+    - 12
+  pred_len: 1
+  shift: 1
+  crossval: False
+
+M3:
+  seq_len:
+    - 6
+    - 18
+  pred_len: 1
+  shift: 1
+  crossval: False
+  
+M4:
+  seq_len:
+    - 6
+    - 18
+  pred_len: 1
+  shift: 1
+  crossval: False
+
+

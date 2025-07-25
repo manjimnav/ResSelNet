@@ -1,9 +1,8 @@
-# A novel interpretable deep learning approach for time series forecasting with masked residual connections
+# A novel interpretable ozone forecasting approach based on deeplearning with masked residual connections
 
 This repository contains all the code needed to reproduce the experiments in the paper presented by M. J. Jiménez-Navarro et al. 
 
-> The time series forecasting problem remains one of the most challenging issues in machine learning. Despite astonishing advances in areas like artificial vision and natural language processing due to the emergence of deep learning, there is still no silver bullet for time series forecasting. In these problems, the data may contain features that are linearly related to the target and others with non-linear relationships.
-Deep learning often struggles to handle linearly related features and adapt to the peculiarities of the problem, especially in time series forecasting, where past values of the target are used as input. We propose a general-purpose methodology for deep learning models that combines residual connections and feature selection to enhance the model's flexibility. The residual connection allows features with highly linear relationships to bypass non-linear transformations while relevant features can be selected at different depths, creating a flexible hierarchy, which allows the model to detect the linear and non-linear relationships automatically. The results demonstrate a consistent improvement in most datasets, which makes this methodology more robust to the peculiarities of the problem. Additionally, the model provides in-depth information on the relevant features and the depth to which they were selected.
+> Air pollution is a growing threat, especially in low- and middle-income countries, causing 4.2 million premature deaths annually. Ground-level ozone is a major concern, necessitating accurate and interpretable prediction systems for public health. This study presents a machine learning-based forecasting approach applied in Andalusia, Spain, to improve ozone pollution predictions. Traditional time-series forecasting struggles with handling both linear and non-linear relationships in multi-horizon scenarios. Deep learning models often fail to adapt to these complexities. To address this, the proposed methodology integrates residual connections and feature selection, allowing features with linear relationships to bypass non-linear transformations while creating a hierarchical structure for better adaptability. This approach enhances flexibility, interpretability, and robustness, improving pollution level estimates. Additionally, it provides insights into the impact of individual features, supporting better decision-making in public health. The results demonstrate significant improvements in prediction accuracy and feature relevance assessment.
 
 ## Prerequisites
 
@@ -12,6 +11,8 @@ In order to run the experimentation several dependencies must be installed. The 
 ```
 pip install -r requirements.txt
 ```
+
+The data should be uncompressed in a folder called "data" on the root directory of the project. The zip can be found at: [PollutionDataset](https://uses0-my.sharepoint.com/:u:/g/personal/mjimenez3_us_es/EVhnCJj0NHlNgFAqe5ncZTgBybUzicDoIS871Pc7IMHU4Q?e=xEWgab)
 
 ## Reproduce result
 

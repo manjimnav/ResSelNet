@@ -1,16 +1,15 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error, r2_score
-import tensorflow as tf
 from typing import Tuple, Union, Iterable
 from sklearn.base import BaseEstimator
-from .dataset import TSDataset
-from .dataset import inverse_scale
+from .dataset import TSDataset, dataset_to_numpy_array, inverse_scale
 from typing import Dict, Union
+import torch
 
 class MetricCalculator():
 
-    def __init__(self, dataset: TSDataset, parameters: dict, selected_idxs:  Dict[str, list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape']) -> None:
+    def __init__(self, dataset: TSDataset, parameters: dict, selected_idxs:  Dict[str, list], metrics_names=['mae', 'mse', 'rmse', 'r2', 'mape', 'mase', 'wape']) -> None:
         
         self.dataset = parameters["dataset"]["name"]
         self.dataset = dataset
@@ -24,11 +23,16 @@ class MetricCalculator():
 
         root_mean_squared_error = lambda true, predictions: np.sqrt(mean_squared_error(true, predictions))
 
+        mase = lambda true, predictions: np.mean([abs(true[i] - predictions[i]) / (abs(true[i] - true[i - 1]) / len(true) - 1) for i in range(1, len(true))])
+        wape = lambda true, predictions: np.abs(true - predictions).sum() / true.sum()
+
         self.name_to_metric = {
             'mae': mean_absolute_error,
             'mse': mean_squared_error,
             'rmse': root_mean_squared_error,
             'mape': mean_absolute_percentage_error,
+            'mase': mase,
+            'wape': wape,
             'r2': r2_score
         }
 
@@ -55,38 +59,44 @@ class MetricCalculator():
 
         return {metric_name+metric_key: self.name_to_metric[metric_name](true, predictions) for metric_name in self.metrics_names}
     
-    def include_metadata(self, metrics, history, duration):
+    def include_metadata(self, metrics, duration):
 
         for key, value in self.recursive_items(self.parameters):
             metrics[key] = value
         
         if type(self.selected_idxs) == list:
-            metrics['selected_features'] = [self.features_names[self.selected_idxs].tolist()]
+            metrics['selected_features'] = [self.selected_idxs]
         else:
-
-            selected_features = {}
-            for layer_name, idxs in self.selected_idxs.items():
-                selected_features[layer_name] = self.features_names[idxs].tolist()
-
-            metrics['selected_features'] = str(selected_features)
+            metrics['selected_features'] = str(self.selected_idxs)
 
         metrics['duration'] = duration
 
-        if history is not None:
-            metrics['history'] = str(history.history.get('val_loss', None))
-            metrics['val_loss'] = min(history.history.get('val_loss', None))
-
         return metrics
 
-    def export_metrics(self, model: Union[tf.keras.Model, BaseEstimator], history: tf.keras.callbacks.History, duration: float) -> Tuple[pd.DataFrame, tf.Tensor, tf.Tensor, tf.Tensor]:
+    def export_metrics(self, model: Union[torch.nn.Module, BaseEstimator], duration: float) -> Tuple[pd.DataFrame, Tuple]:
         
-        self.inputs_test = self.dataset.data_test["data"][0]
-        self.inputs_valid = self.dataset.data_valid["data"][0]
+        if self.dataset.model_type != "pytorch":
+            self.inputs_test = self.dataset.data_test["data"][0]
+            self.inputs_valid = self.dataset.data_valid["data"][0]
+            
+            n_instances_test = self.dataset.data_test["data"][1].shape[0]
+            n_instances_valid = self.dataset.data_valid["data"][1].shape[0]
+            true_scaled, true_valid_scaled = self.dataset.data_test["data"][1].reshape(n_instances_test, -1), self.dataset.data_valid["data"][1].reshape(n_instances_valid, -1)
+        else:
+            data_test_numpy = dataset_to_numpy_array(self.dataset.data_test)["data"] if not isinstance(self.dataset.data_test, np.ndarray) else self.dataset.data_test
+            data_valid_numpy = dataset_to_numpy_array(self.dataset.data_valid)["data"] if not isinstance(self.dataset.data_valid, np.ndarray) else self.dataset.data_valid
+            self.inputs_test = data_test_numpy[0]
+            self.inputs_valid = data_valid_numpy[0]
+            true_scaled, true_valid_scaled = data_test_numpy[1], data_valid_numpy[1]
 
-        predictions = model.predict(self.inputs_test)
-        predictions_valid = model.predict(self.inputs_valid)
+        if self.dataset.model_type != "pytorch":
+            predictions = model.predict(self.inputs_test.reshape(self.inputs_test.shape[0], -1))
+            predictions_valid = model.predict(self.inputs_valid.reshape(self.inputs_valid.shape[0], -1))
+        else:
+            predictions = model(torch.tensor(self.inputs_test), torch.tensor(true_scaled)).cpu().detach().numpy()
+            predictions_valid = model(torch.tensor(self.inputs_valid), torch.tensor(true_valid_scaled)).cpu().detach().numpy()
 
-        true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = self.dataset.data_test["data"][1], self.dataset.data_valid["data"][1], predictions, predictions_valid
+        predictions_scaled, predictions_valid_scaled  = predictions, predictions_valid
         true, predictions = inverse_scale([true_scaled, predictions_scaled], groups=self.dataset.data_test.get("groups", None), scaler=self.dataset.scaler, label_idxs=self.dataset.label_idxs)
         true_valid, predictions_valid = inverse_scale([true_valid_scaled, predictions_valid_scaled], groups=self.dataset.data_valid.get("groups", None), scaler=self.dataset.scaler, label_idxs=self.dataset.label_idxs)
 
@@ -95,10 +105,9 @@ class MetricCalculator():
 
         metrics = pd.DataFrame({**metrics_test, **metrics_valid}, index=[0])
 
-        metrics = self.include_metadata(metrics, history, duration)
+        metrics = self.include_metadata(metrics, duration)
 
-        self.true_test = true.flatten()
-        self.predictions_test = predictions.flatten()
-        self.true_test = true_scaled
+        self.true_test = true
+        self.predictions_test = predictions
         
         return metrics
