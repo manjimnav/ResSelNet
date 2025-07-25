@@ -63,7 +63,6 @@ class MetricCalculator():
         if type(self.selected_idxs) == list:
             metrics['selected_features'] = [self.features_names[self.selected_idxs].tolist()]
         else:
-
             selected_features = {}
             for layer_name, idxs in self.selected_idxs.items():
                 selected_features[layer_name] = self.features_names[idxs].tolist()
@@ -83,8 +82,12 @@ class MetricCalculator():
         self.inputs_test = self.dataset.data_test["data"][0]
         self.inputs_valid = self.dataset.data_valid["data"][0]
 
-        predictions = model.predict(self.inputs_test)
-        predictions_valid = model.predict(self.inputs_valid)
+        kargs = {}
+        if self.parameters["model"]['params']['type'] == 'tensorflow':
+            kargs = {'verbose': 0}
+
+        predictions = model.predict(self.inputs_test, **kargs)
+        predictions_valid = model.predict(self.inputs_valid, **kargs)
 
         true_scaled, true_valid_scaled, predictions_scaled, predictions_valid_scaled  = self.dataset.data_test["data"][1], self.dataset.data_valid["data"][1], predictions, predictions_valid
         true, predictions = inverse_scale([true_scaled, predictions_scaled], groups=self.dataset.data_test.get("groups", None), scaler=self.dataset.scaler, label_idxs=self.dataset.label_idxs)

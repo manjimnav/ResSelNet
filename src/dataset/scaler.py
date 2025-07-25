@@ -59,17 +59,8 @@ def inverse_scale(y_vals, groups=None, scaler=None, label_idxs=None):
             mean = scaler.mean_[label_idxs]
             std = scaler.scale_[label_idxs]
 
-            if len(label_idxs)>1:
-                mean = np.reshape(mean, (1, 1, len(mean)))
-                std = np.reshape(std, (1, 1, len(std)))        
-
             for y in y_vals:
-
-                if len(label_idxs)>1:
-                    y = np.reshape(y, (y.shape[0], -1, len(label_idxs)))
                 y_inverse = y*std + mean
-
-                y_inverse = np.reshape(y_inverse, (y.shape[0], -1))
                 iscaled_values = iscaled_values + (y_inverse,)
         else:
             for y_scaled in y_vals:
@@ -77,14 +68,7 @@ def inverse_scale(y_vals, groups=None, scaler=None, label_idxs=None):
                 for group, y_val in zip(groups, y_scaled):
                     mean = scaler.scalers[group].mean_[label_idxs]
                     std = scaler.scalers[group].scale_[label_idxs]
-                    if len(label_idxs)>1:
-                        mean = np.reshape(mean, (mean.shape[0], -1, len(label_idxs)))
-                        std = np.reshape(std, (std.shape[0], -1, len(label_idxs)))
-                        y_val = np.reshape(y_val, (y_val.shape[0], -1, len(label_idxs)))
-
-                    y_val_inverse = y_val*std + mean
-                    y_val_inverse = np.reshape(y_val_inverse, (y.shape[0], -1))
-                    y_inverse.append(y_val_inverse)
+                    y_inverse.append(y_val*std + mean)
 
                 iscaled_values = iscaled_values + (y_inverse,)
         

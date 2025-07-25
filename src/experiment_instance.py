@@ -12,6 +12,8 @@ from .metric import MetricCalculator
 from .dataset import TSDataset
 import copy
 
+json.encoder.FLOAT_REPR = lambda o: format(o, '.8f')
+
 
 
 class ExperimentInstance:
@@ -50,6 +52,7 @@ class ExperimentInstance:
         dhash = hashlib.md5()
         # We need to sort arguments so {'a': 1, 'b': 2} is
         # the same as {'b': 2, 'a': 1}
+        print(dictionary)
         encoded = json.dumps(dictionary, sort_keys=True, default=self.convert).encode()
         dhash.update(encoded)
         return dhash.hexdigest()

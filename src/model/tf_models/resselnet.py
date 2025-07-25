@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras import layers
 from .layer import get_time_selection_layer
 from .base import BaseModel
@@ -14,7 +15,7 @@ class ResSelNet(BaseModel):
     def call(self, inputs):
 
         inputs = self.reshape_layer(inputs)
-
+        
         x = self.input_time_selection_layer(inputs) 
 
         for hidden_l, residual_l, dropout_l in zip(self.hidden_layers, self.residual_hidden_layers, self.dropout_hidden_layers):

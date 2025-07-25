@@ -180,10 +180,12 @@ class ExperimentLauncher:
     
     def is_performed(self, experiment, params):
 
-        if experiment.code in self.metrics.get('code', default=pd.Series([], dtype=str)).tolist():
+        if experiment.code in self.metrics.get('code', default=pd.Series([], dtype=str)).unique().tolist():
+            print(experiment.code)
+            print(self.metrics.get('code', default=pd.Series([], dtype=str)).unique().tolist())
             if self.optimizer == 'bayesian': # Register previous metrics performed
                 self.optimizer.register(params=params, target=-self.metrics.loc[self.metrics.code == experiment.code,'root_mean_squared_error_valid'].mean())
-                return True
+            return True
         
         return False
 

@@ -1,3 +1,5 @@
+import tensorflow as tf
+from tensorflow.keras import layers
 from .layer import get_time_selection_layer
 from .base import BaseModel
 
