@@ -1,3 +1,109 @@
+itransformer:
+  layers:
+    - 1
+    - 3
+  units:
+    - 4
+    - 64
+  num_heads:
+    - 2
+    - 8
+  dff_mult:      # dff = dff_mult * units
+    - 2
+    - 4
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 16
+    - 128
+  lr:
+    - 0.0001
+    - 0.01
+  type: tensorflow
+
+arima:
+  p:
+    - 0
+    - 3
+  d:
+    - 0
+    - 2
+  q:
+    - 0
+    - 3
+  type: sklearn
+
+tcn:
+  layers:
+    - 1
+    - 4
+  units:
+    - 16
+    - 128
+  kernel_size:
+    - 2
+    - 5
+  dilation_base:
+    - 2
+    - 4
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 16
+    - 128
+  lr:
+    - 0.0001
+    - 0.01
+  type: tensorflow
+
+cnn:
+  layers:
+    - 1
+    - 4
+  units:
+    - 16
+    - 128
+  kernel_size:
+    - 2
+    - 5
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 16
+    - 128
+  lr:
+    - 0.0001
+    - 0.01
+  type: tensorflow
+
+
+transformer:
+  layers:
+    - 1
+    - 3
+  units:
+    - 4
+    - 64
+  num_heads:
+    - 2
+    - 8
+  dff_mult:      # dff = dff_mult * units
+    - 2
+    - 4
+  dropout:
+    - 0.0
+    - 0.5
+  batch_size:
+    - 16
+    - 128
+  lr:
+    - 0.0001
+    - 0.01
+  type: tensorflow
+
 lstm:
   layers:
     - 1
