@@ -101,6 +101,20 @@ class ExperimentInstance:
 
         model_name = self.parameters['model']['name']
 
+        val = self.parameters['model']['params'].get('target_label_index', 0)
+
+        if hasattr(model, "set_context"):
+            T = int(self.parameters['dataset']['params']['seq_len'])
+            H = int(self.parameters['dataset']['params']['pred_len'])
+            F = len(self.dataset.label_idxs) + len(self.dataset.values_idxs)
+
+            model.set_context(
+            seq_len=T,
+            pred_len=H,
+            label_idxs=[int(i) for i in self.dataset.label_idxs],
+            features_per_timestep=F,
+        )
+
         model.fit(data_train[0], data_train[1])
 
         features = self.dataset.feature_names
@@ -108,10 +122,13 @@ class ExperimentInstance:
 
         if model_name == 'lasso':
             importances = model.coef_.max(axis=0)
-        else:
+            self.selected_idxs = {"level0": features_idxs[importances>0]}
+        elif hasattr(model, 'feature_importances_'):
             importances = model.feature_importances_
-        self.selected_idxs = {"level0": features_idxs[importances>0]}
-
+            self.selected_idxs = {"level0": features_idxs[importances>0]}
+        else:
+            self.selected_idxs = {"level0": np.array([], dtype=int)}
+        
         return model, None
 
     def train(self, model: Union[tf.keras.Model, BaseEstimator]) -> Tuple[Union[tf.keras.Model, BaseEstimator], Optional[tf.keras.callbacks.History]]:
@@ -145,6 +162,9 @@ class ExperimentInstance:
         """
 
         self.dataset.preprocess()
+
+        self.parameters.setdefault('dataset', {})
+        self.parameters['dataset']['label_idxs'] = [int(i) for i in self.dataset.label_idxs]
 
         n_features_in = len(self.dataset.label_idxs) + len(self.dataset.values_idxs)
         n_features_out = len(self.dataset.label_idxs)

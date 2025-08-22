@@ -1,3 +1,6 @@
+arima:
+  module: src.model.sk_arima
+  name: WindowARIMA
 decisiontree:
   module: sklearn.tree
   name: DecisionTreeRegressor
