@@ -35,7 +35,6 @@ class ExperimentLauncher:
         self.iterations = iterations
         self.optimizer = None
 
-
         if os.path.exists(self.save_file):
             self.metrics = pd.read_csv(self.save_file)
         else:
@@ -106,10 +105,10 @@ class ExperimentLauncher:
         bounds = {}
         for general_key in general_params.keys():
             if general_params[general_key]['params'] is not None:
-                bound_params = {key: value for key, value in general_params[general_key]['params'].items() if type(value) == list}
-
-                bounds.update(bound_params)
-        
+                for key, value in general_params[general_key]['params'].items():
+                    if isinstance(value, list) and len(value) >= 2 and isinstance(value[0], (int, float, np.integer, np.floating)) and isinstance(value[1], (int, float, np.integer, np.floating)):
+                        low, high = float(value[0]), float(value[1])
+                        bounds[key] = (low, high)
         return bounds
     
     def update_params(self, optimized_params: dict, general_params: dict) -> dict:
@@ -153,14 +152,12 @@ class ExperimentLauncher:
             verbose=2,
             random_state=1,
         )
-
         utility = UtilityFunction(kind="ucb", kappa=2.576)
 
         for _ in range(self.iterations):
             optimized_params = self.optimizer.suggest(utility)      
 
             params = self.update_params(optimized_params, general_params)
-
             yield params
 
     def search_hyperparameters(self, general_params: dict) -> Iterable:

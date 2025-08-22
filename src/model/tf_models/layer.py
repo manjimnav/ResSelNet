@@ -3,7 +3,109 @@ import math
 from functools import partial
 from typing import Type
 import numpy as np
-from tensorflow.keras import initializers
+from tensorflow import keras
+from tensorflow.keras import initializers, layers
+
+from tensorflow import keras
+from tensorflow.keras import layers
+
+from .itransformer import (
+    ChannelTransformerBlock,
+    InstanceNormSeries,
+    SeriesEmbedding,
+    ChannelSinusoidalPE,
+)
+
+class TCNResidualBlock(layers.Layer):
+    def __init__(self, filters, kernel_size=3, dilation_rate=1, dropout=0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.conv = layers.Conv1D(
+            filters, kernel_size,
+            padding="causal",
+            dilation_rate=dilation_rate,
+            activation="relu",
+            kernel_initializer=initializers.HeUniform(seed=123),
+            bias_initializer=initializers.Zeros()
+        )
+        self.drop = layers.Dropout(dropout)
+        self.proj = layers.Conv1D(
+            filters, 1, padding="same",
+            kernel_initializer=initializers.HeUniform(seed=123),
+            bias_initializer=initializers.Zeros()
+        )
+
+    def call(self, x, training=False):
+        y = self.conv(x)
+        y = self.drop(y, training=training)
+        if x.shape[-1] != y.shape[-1]:
+            x = self.proj(x)
+        return tf.nn.relu(x + y)
+
+class TransformerEncoderBlock(layers.Layer):
+    def __init__(self, d_model, num_heads=4, dff=2, dropout=0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.d_model   = d_model
+        # keep heads reasonable vs. d_model
+        self.num_heads = max(1, min(num_heads, self.d_model))
+        self.key_dim   = max(1, self.d_model // self.num_heads)
+        self.dropout   = dropout
+
+        # input projection if channels != d_model
+        self.proj_in = layers.Dense(self.d_model)
+
+        self.ln1 = layers.LayerNormalization(epsilon=1e-5)
+        self.ln2 = layers.LayerNormalization(epsilon=1e-5)
+
+        self.mha = layers.MultiHeadAttention(
+            num_heads=self.num_heads,
+            key_dim=self.key_dim,
+            output_shape=self.d_model,
+            dropout=self.dropout,
+        )
+        self._needs_proj_out = False
+
+
+        self.do1 = layers.Dropout(self.dropout)
+        self.ffn = keras.Sequential([
+            layers.Dense(int(dff), activation="relu"),
+            layers.Dense(self.d_model),
+        ])
+        self.do2 = layers.Dropout(self.dropout)
+
+    def _add_sinusoidal_pe(self, x):
+        T = tf.shape(x)[1]
+        d = self.d_model
+        half = d // 2
+
+        positions = tf.cast(tf.range(T)[:, None], tf.float32)
+        div_term  = tf.pow(10000.0, -tf.range(half, dtype=tf.float32) / float(half))
+        angles    = positions * div_term[None, :]
+
+        pe_sin = tf.sin(angles)
+        pe_cos = tf.cos(angles)
+        pe     = tf.reshape(tf.stack([pe_sin, pe_cos], axis=-1), (T, -1))
+
+        if d % 2 == 1:
+            pe = tf.pad(pe, [[0, 0], [0, 1]])
+
+        pe = pe[None, :, :]
+        return x + pe
+
+    def call(self, x, training=False):
+        # ensure channel dim == d_model
+        if x.shape[-1] != self.d_model:
+            x = self.proj_in(x)
+        
+        x = self._add_sinusoidal_pe(x)
+
+        qkv = self.ln1(x)
+        y = self.mha(qkv, qkv, qkv, training=training)
+
+        x = x + self.do1(y, training=training)
+
+        y2 = self.ffn(self.ln2(x))
+        x  = x + self.do2(y2, training=training)
+        return x
 
 def hard_sigmoid(x: tf.Tensor) -> tf.Tensor:
     """
@@ -130,7 +232,16 @@ def get_base_layer(layer_type: str) -> Type[tf.keras.layers.Layer]:
     elif layer_type == 'lstm':
         BASE_LAYER = partial(tf.keras.layers.LSTM, activation='tanh', kernel_initializer=initializers.HeUniform(seed=123), bias_initializer=initializers.Zeros())
     elif layer_type == 'cnn':
-        BASE_LAYER = partial(tf.keras.layers.Conv1D, kernel_size=3, kernel_initializer=initializers.HeUniform(seed=123), bias_initializer=initializers.Zeros())
+        BASE_LAYER = partial(tf.keras.layers.Conv1D, padding='same', activation='relu', kernel_initializer=initializers.HeUniform(seed=123), bias_initializer=initializers.Zeros())
+
+    elif layer_type == 'tcn':
+        BASE_LAYER = TCNResidualBlock
+
+    elif layer_type == 'transformer':
+        BASE_LAYER = TransformerEncoderBlock
+
+    elif layer_type == 'itransformer':
+        BASE_LAYER = ChannelTransformerBlock
 
     return BASE_LAYER
 

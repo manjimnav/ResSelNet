@@ -10,7 +10,18 @@ class ResSelNet(BaseModel):
 
         self.input_time_selection_layer = get_time_selection_layer(self.parameters, self.n_outputs, name=f'input_tsl')
 
-        self.residual_hidden_layers = [get_time_selection_layer(self.parameters, self.n_outputs, name=f'tsl_{i}', flatten=parameters['model']['name'] == 'dense' or i==(self.n_layers-1)) for i in range(self.n_layers)]
+        is_dense = (self.model == "dense")
+        is_lstm = (self.model == "lstm")
+
+        self.residual_hidden_layers = [
+            get_time_selection_layer(
+                self.parameters,
+                self.n_outputs,
+                name=f"tsl_{i}",
+                flatten=(is_dense or (is_lstm and i == (self.n_layers - 1))),
+            )
+            for i in range(self.n_layers)
+        ]
 
     def call(self, inputs):
 
@@ -23,6 +34,9 @@ class ResSelNet(BaseModel):
             x = hidden_l(x)
             x = dropout_l(x)
             x = layers.Concatenate()([x, residual_l(inputs)])
+
+        if getattr(self, "temporal_pool", None) is not None:
+            x = self.temporal_pool(x)
         
         outputs = self.output_layer(x)
 

@@ -18,6 +18,9 @@ class TSLNet(BaseModel):
 
             x = hidden_l(x)
             x = dropout_l(x)
+
+        if getattr(self, "temporal_pool", None) is not None:
+            x = self.temporal_pool(x)
         
         outputs = self.output_layer(x)
 
